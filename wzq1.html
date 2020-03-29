@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>五子棋小游戏</title>
+  <style>
+    #wrap {
+      width: 500px;
+      height: 500px;
+      margin: auto;
+      /* background: red; */
+      position: relative;
+    }
+
+    #btnWrap {
+      overflow: hidden;
+      width: 330px;
+      margin: auto;
+    }
+
+    button {
+      float: left;
+      width: 90px;
+      height: 25px;
+      margin: auto 10px;
+      padding: 0;
+      font: bold 18px/25px '幼圆';
+      color: white;
+      background: rgb(243, 146, 0);
+      border: 1px solid transparent;
+      border-radius: 10%;
+      outline: none;
+    }
+
+    #btnNew {
+      left: 100px;
+    }
+
+    #chessbd {
+      background: #7e522a;
+      position: absolute;
+      bottom: 10px;
+      left: 25px;
+    }
+  </style>
+</head>
+<body>
+   <div id="wrap">
+    <div id="btnWrap">
+      <button id="btnNew">新游戏</button>
+      <button id="btnPrev">悔棋</button>
+      <button id="btnRe">取消悔棋</button>
+    </div>
+    <br />
+    <canvas id="chessbd" width="450" height="450"></canvas>
+   </div>
+   <script>
+      let btnNew = document.querySelector('#btnNew');
+      let btnPrev = document.querySelector('#btnPrev');
+      let btnRe = document.querySelector('#btnRe');
+      let chessbd = document.querySelector('#chessbd');
+      let context = chessbd.getContext('2d');
+      // 棋子状态
+      let chessArr = [];
+      // 棋子颜色
+      let chessColor = ['black','white'];
+      // 当前步数
+      let step = 0;
+      // 判断游戏状态
+      let isWin = false;
+      // 逻辑检测
+      let check = [
+        [1,0], //水平
+        [0,1], //垂直
+        [1,1], //左斜
+        [1,-1] //右斜
+      ];
+      // 当前落子
+      let currentChess = [];
+
+      btnNew.addEventListener('click',function(){
+        startGame(); // 开始新游戏
+      });
+
+      // 新游戏函数
+      function startGame() {
+        // 初始化
+        for(let i=0; i<14; i++){
+          chessArr[i] = [];
+          for(let j=0; j<14; j++){
+            chessArr[i][j] = 0;
+          }
+        }
+
+        // 清空棋盘
+        clearChessBoard();
+        // 绘制棋盘
+        drawChessBoard();
+        // 游戏状态
+        isWin = false;
+      }
+
+      function drawChessBoard() {
+        for(let i=0; i<14; i++){
+          context.beginPath();
+          context.moveTo((i+1) * 30, 30);
+          context.lineTo((i+1) * 30, chessbd.height - 30);
+          context.closePath();
+          context.stroke();
+          context.beginPath();
+          context.moveTo(30, (i+1) * 30);
+          context.lineTo(chessbd.width - 30, (i+1) * 30,);
+          context.closePath();
+          context.stroke();
+        }
+      }
+
+      // 清空棋盘
+      function clearChessBoard() {
+        context.fillStyle = '#7e522a';
+        context.fillRect(0, 0, chessbd.width, chessbd.height);
+      }
+
+      // 棋子绘制
+      function drawChess(x,y,color) {
+        context.beginPath();
+        context.arc(x,y,15,0,Math.PI*2,false);
+        context.fillStyle = color;
+        context.fill();
+      }
+
+      // 悔棋棋子删除
+      function clearChess(x,y) {
+        var stepClear=1;
+        function clearArc(x,y,radius){//圆心(x,y)，半径radius
+          let calcWidth=radius-stepClear;
+          let calcHeight=Math.sqrt(radius*radius-calcWidth*calcWidth);
+          
+          let posX=x-calcWidth;
+          let posY=y-calcHeight;
+          
+          let widthX=2*calcWidth;
+          let heightY=2*calcHeight;
+          
+          if(stepClear<=radius){
+            context.clearRect(posX,posY,widthX,heightY);
+            stepClear+=1;
+            clearArc(x,y,radius);
+          }
+        }
+        clearArc(x,y,15)
+        context.beginPath();
+        context.moveTo(x-15,x+15);
+        context.lineTo(x-15,x+15);
+        context.closePath();
+        context.stroke();
+      }
+
+      chessbd.addEventListener('click',function(e){
+        // 判断游戏状态
+        if(isWin) {
+          alert('您已经胜利了 ~!');
+          return;
+        }
+
+        // 边界判断
+        if(e.offsetX < 30 
+        || e.offsetX >420
+        || e.offsetY < 30
+        || e.offsetY > 420){
+          return;
+        }
+
+        let xx = Math.floor((e.offsetX + 15) / 30) * 30;
+        let yy = Math.floor((e.offsetY + 15) / 30) * 30;
+        if(chessArr[xx/30-1][yy/30-1] === 0){
+          // 落子
+          // currentChess = [xx,yy];
+          drawChess(xx,yy,chessColor[step % 2]);
+          btnPrev.addEventListener('click',function(){
+            clearChess(xx,yy)
+          })
+          chessArr[xx/30-1][yy/30-1] = chessColor[step % 2];
+          for(let i = 0; i<4; i++){
+            checkWin(xx/30-1,yy/30-1, chessColor[step % 2], check[i]);
+          }
+          step++;
+        }
+      });
+
+      // 判断胜负
+      function checkWin(x,y,color,mode){
+        let count = 1; // 分数
+        // console.log(currentChess)
+        for(let i=1; i<5; i++){
+          if(chessArr[x + i * mode[0]]){
+            if(chessArr[x + i * mode[0]][y + i * mode[1]] === color){
+              // console.log(chessArr)
+              count ++;
+            }else{
+              break;
+            }
+          }
+        }
+
+        for(let j = 1; j<5; j++){
+          if(chessArr[x -j * mode[0]][y - j * mode[1]] === color){
+            // console.log(chessArr)
+            count++;
+          }else{
+            break;
+          }
+        }
+        // if(mode === check[0]){
+        //   console.log('水平方向：' + count + '个' + color);
+        // }
+        // if(mode === check[1]){
+        //   console.log('垂直方向：' + count + '个' + color);
+        // }
+        // if(mode === check[2]){
+        //   console.log('左斜方向：' + count + '个' + color);
+        // }
+        // if(mode === check[3]){
+        //   console.log('右斜方向：' + count + '个' + color);
+        // }
+
+        if(count >= 5) {
+          alert(`${color==='black'?'黑':'白'}子胜 ~!  继续努力哈`);
+          // 游戏结束
+          isWin = true;
+        }
+      }
+
+      // 悔棋功能
+      // btnPrev.addEventListener('click',function(){
+      //   console.log(chessArr,step,preStep)
+      // })
+   </script>
+</body>
+</html>
